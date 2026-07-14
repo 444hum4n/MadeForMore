@@ -64,6 +64,12 @@
   }
   .item.done { background: var(--green-bg); }
   .item.done .item-label { color: var(--green-text); }
+  .item-body { flex: 1; min-width: 0; }
+  .item-note {
+    font-size: 12px; color: var(--text-muted); margin-top: 4px;
+    padding: 2px 0; cursor: pointer;
+  }
+  .item.done .item-note { color: var(--green-text); opacity: 0.75; }
   .checkbox {
     width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
     flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -246,7 +252,20 @@ function toggle(id) {
   saveState(state);
   render();
 }
-
+function setNote(id) {
+  const key = viewKey();
+  if (!state.logs[key] || !state.logs[key][id]) return; // only note completed items
+  const existing = state.logs[key][id + "__note"] || "";
+  const text = prompt("Quick note (optional) — how did it go?", existing);
+  if (text === null) return; // cancelled, nothing changes
+  if (text.trim() === "") {
+    delete state.logs[key][id + "__note"];
+  } else {
+    state.logs[key][id + "__note"] = text.trim();
+  }
+  saveState(state);
+  render();
+}
 function toggleHardDay() {
   const key = viewKey();
   if (!state.logs[key]) state.logs[key] = {};
@@ -347,7 +366,10 @@ function render() {
       ${items.map(i => `
         <div class="item ${log[i.id] ? "done" : ""}" data-id="${i.id}">
           <div class="checkbox">${log[i.id] ? "&#10003;" : ""}</div>
-          <div class="item-label">${i.label}</div>
+          <div class="item-body">
+            <div class="item-label">${i.label}</div>
+            ${log[i.id] ? `<div class="item-note" data-note-id="${i.id}">${log[i.id + "__note"] ? "&#128221; " + log[i.id + "__note"] : "+ add note"}</div>` : ""}
+          </div>
         </div>
       `).join("")}
     </div>
@@ -403,8 +425,11 @@ function render() {
 
   app.innerHTML = html;
 
-  app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
-  const th = document.getElementById("toggle-hardday");
+app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
+  app.querySelectorAll(".item-note").forEach(el => el.addEventListener("click", (e) => {
+    e.stopPropagation(); // so tapping the note doesn't also un-check the item above it
+    setNote(el.dataset.noteId);
+  }));  const th = document.getElementById("toggle-hardday");
   if (th) th.addEventListener("click", toggleHardDay);
   document.getElementById("btn-history").addEventListener("click", () => { sheetOpen = "history"; render(); });
   document.getElementById("btn-backup").addEventListener("click", () => { sheetOpen = "backup"; render(); });
