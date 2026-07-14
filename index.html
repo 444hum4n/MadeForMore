@@ -95,6 +95,19 @@
   }
   .backup-status.fresh { background: var(--green-bg); color: var(--green-text); }
   .backup-status.stale { background: var(--amber-bg); color: var(--amber-text); }
+  .timer-display {
+    font-size: 56px; font-weight: 700; text-align: center;
+    margin-top: 16px; font-variant-numeric: tabular-nums;
+  }
+  .timer-mode {
+    text-align: center; font-size: 14px; color: var(--text-secondary);
+    margin-top: 4px; margin-bottom: 8px;
+  }
+  .next-up-banner {
+    margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+    background: var(--card); border: 0.5px solid var(--border);
+    font-size: 13px; color: var(--text-secondary); text-align: center;
+  }
   .phase-banner {
     margin-top: 12px; padding: 12px 14px; border-radius: 10px;
     background: var(--green-bg); color: var(--green-text);
@@ -178,48 +191,48 @@
 // ---- Config: this array is the only thing you'd change to re-calibrate the plan ----
 const PHASES = [
   { name: "Phase 1", items: [
-    { id: "wake", label: "5:45am wake, feet on floor", essential: true },
+    { id: "wake", label: "5:45am wake, feet on floor", essential: true, time: "05:45" },
     { id: "water", label: "Water, cold face, prayer" },
-    { id: "gym", label: "6am gym or stretch (light effort)" },
-    { id: "study", label: "9am desk, 90 min minimum", essential: true },
-    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true },
+    { id: "gym", label: "6am gym or stretch (light effort)", time: "06:00" },
+    { id: "study", label: "9am desk, 90 min minimum", essential: true, time: "09:00" },
+    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true, times: ["08:00","13:00","17:00"] },
   ]},
   { name: "Phase 2", items: [
-    { id: "wake", label: "5:45am wake, feet on floor", essential: true },
+    { id: "wake", label: "5:45am wake, feet on floor", essential: true, time: "05:45" },
     { id: "water", label: "Water, cold face, prayer" },
-    { id: "gym", label: "6am gym or stretch (light effort)" },
-    { id: "study", label: "9am desk, 90 min minimum", essential: true },
-    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true },
+    { id: "gym", label: "6am gym or stretch (light effort)", time: "06:00" },
+    { id: "study", label: "9am desk, 90 min minimum", essential: true, time: "09:00" },
+    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true, times: ["08:00","13:00","17:00"] },
     { id: "winddown", label: "Wind-down: phone out of room, no screens, dark & cool room, no late food", essential: true },
   ]},
   { name: "Phase 3", items: [
-    { id: "wake", label: "5:45am wake, feet on floor", essential: true },
+    { id: "wake", label: "5:45am wake, feet on floor", essential: true, time: "05:45" },
     { id: "water", label: "Water, cold face, prayer" },
-    { id: "gym", label: "Gym, full intensity" },
-    { id: "study", label: "Study block (building to 6hrs)", essential: true },
-    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true },
+    { id: "gym", label: "Gym, full intensity", time: "06:00" },
+    { id: "study", label: "Study block (building to 6hrs)", essential: true, time: "09:00" },
+    { id: "meals", label: "3 meals: 8am / 1pm / 5pm", essential: true, times: ["08:00","13:00","17:00"] },
     { id: "journal", label: "Journal (after prayer)" },
     { id: "winddown", label: "Wind-down: phone out of room, no screens, dark & cool room, no late food", essential: true },
   ]},
   { name: "Phase 4", items: [
-    { id: "wake", label: "5:45am wake, feet on floor", essential: true },
+    { id: "wake", label: "5:45am wake, feet on floor", essential: true, time: "05:45" },
     { id: "water", label: "Water, cold face, prayer" },
-    { id: "gym", label: "Gym, full intensity" },
-    { id: "study", label: "Study block, 6hrs", essential: true },
-    { id: "meals", label: "Meals: 3000kcal / 170g protein", essential: true },
+    { id: "gym", label: "Gym, full intensity", time: "06:00" },
+    { id: "study", label: "Study block, 6hrs", essential: true, time: "09:00" },
+    { id: "meals", label: "Meals: 3000kcal / 170g protein", essential: true, times: ["08:00","13:00","17:00"] },
     { id: "journal", label: "Journal" },
     { id: "tennis", label: "Tennis (after study ends)" },
     { id: "winddown", label: "Wind-down: phone out of room, no screens, dark & cool room, no late food", essential: true },
   ]},
   { name: "Phase 5", items: [
-    { id: "wake", label: "5:45am wake, feet on floor", essential: true },
+    { id: "wake", label: "5:45am wake, feet on floor", essential: true, time: "05:45" },
     { id: "water", label: "Water, cold face, prayer" },
-    { id: "gym", label: "Gym, full intensity" },
-    { id: "study", label: "Study block, 6hrs", essential: true },
-    { id: "meals", label: "Meals: 3000kcal / 170g protein", essential: true },
+    { id: "gym", label: "Gym, full intensity", time: "06:00" },
+    { id: "study", label: "Study block, 6hrs", essential: true, time: "09:00" },
+    { id: "meals", label: "Meals: 3000kcal / 170g protein", essential: true, times: ["08:00","13:00","17:00"] },
     { id: "journal", label: "Journal" },
     { id: "tennis", label: "Tennis" },
-    { id: "language", label: "Language block, 4-5pm" },
+    { id: "language", label: "Language block, 4-5pm", time: "16:00" },
     { id: "reading", label: "Reading / random topic" },
     { id: "winddown", label: "Wind-down: phone out of room, no screens, dark & cool room, no late food", essential: true },
   ]},
@@ -235,6 +248,51 @@ function fmtKey(d) {
 }
 function todayKey() { return fmtKey(new Date()); }
 
+function timeToMinutes(t) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function itemTargetMinutes(item, nowMin) {
+  if (item.time) return timeToMinutes(item.time);
+  if (item.times) {
+    const mins = item.times.map(timeToMinutes);
+    const upcoming = mins.find(m => m >= nowMin);
+    return upcoming !== undefined ? upcoming : mins[mins.length - 1];
+  }
+  return null;
+}
+
+function shortLabel(item) {
+  const SHORT_NAMES = { wake: "Wake", gym: "Gym", study: "Study", meals: "Meals", language: "Language", water: "Water", journal: "Journal", tennis: "Tennis", reading: "Reading", winddown: "Wind-down" };
+  return SHORT_NAMES[item.id] || item.label.split(",")[0];
+}
+
+function nextUpBanner(items, log) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const timed = items
+    .filter(i => !log[i.id] && (i.time || i.times))
+    .map(i => ({ item: i, target: itemTargetMinutes(i, nowMin) }));
+  if (timed.length) {
+    timed.sort((a, b) => a.target - b.target);
+    const next = timed[0];
+    const diff = next.target - nowMin;
+    if (diff > 5) {
+      const h = Math.floor(diff / 60), m = diff % 60;
+      const when = h > 0 ? `${h}h ${m}m` : `${m} min`;
+      return `${shortLabel(next.item)} — starts in ${when}`;
+    } else if (diff >= -60) {
+      return `${shortLabel(next.item)} — due now`;
+    } else {
+      return `${shortLabel(next.item)} — still pending from earlier`;
+    }
+  }
+  const flexible = items.find(i => !log[i.id] && !i.time && !i.times);
+  if (flexible) return `Next up: ${shortLabel(flexible)}`;
+  return "All anchors done for today — well built.";
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -243,6 +301,71 @@ function loadState() {
   return { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0, freezes: 0, freezeDays: {}, freezeAwardTier: 0 };
 }
 function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+// ---- Focus timer: 25 min focus / manual-resume break, lives in memory only ----
+// (ephemeral by design — a live study-session tool, not historical data to save)
+const FOCUS_SECONDS = 25 * 60;
+let timerSeconds = FOCUS_SECONDS;
+let timerMode = "focus"; // "focus" | "break"
+let timerRunning = false;
+let timerHandle = null;
+let completedBlocks = 0;
+let audioCtx = null;
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+}
+
+function playBeep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch (e) {}
+}
+
+function timerTick() {
+  if (timerSeconds > 0) timerSeconds--;
+  if (timerSeconds === 0 && timerMode === "focus") {
+    timerRunning = false;
+    clearInterval(timerHandle);
+    timerMode = "break";
+    completedBlocks++;
+    playBeep();
+  }
+  render();
+}
+
+function startTimer() {
+  if (timerRunning) return;
+  timerRunning = true;
+  timerHandle = setInterval(timerTick, 1000);
+  render();
+}
+function pauseTimer() {
+  timerRunning = false;
+  clearInterval(timerHandle);
+  render();
+}
+function resetTimer() {
+  timerRunning = false;
+  clearInterval(timerHandle);
+  timerMode = "focus";
+  timerSeconds = FOCUS_SECONDS;
+  render();
+}
+function resumeFocusAfterBreak() {
+  timerMode = "focus";
+  timerSeconds = FOCUS_SECONDS;
+  startTimer();
+}
 
 let state = loadState();
 let viewOffset = 0; // 0 = today, -1 = yesterday, etc. Only 0 and -1 editable.
@@ -411,10 +534,13 @@ function render() {
         <div class="phase-sub">${items.length} anchors${hardDay ? " (hard-day mode)" : ""}</div>
       </div>
       <div class="header-btns">
+        <div class="icon-btn" id="btn-focus">&#9201;</div>
         <div class="icon-btn" id="btn-history">&#128202;</div>
         <div class="icon-btn" id="btn-backup">&#8635;</div>
       </div>
     </div>
+
+    ${viewOffset === 0 ? `<div class="next-up-banner">&#128204; ${nextUpBanner(items, log)}</div>` : ""}
 
     <div class="day-nav">
       <button id="nav-prev" ${viewOffset <= -1 ? "disabled" : ""}>&#8249;</button>
@@ -543,6 +669,26 @@ function render() {
     `;
   }
 
+  if (sheetOpen === "focus") {
+    html += `
+      <div class="overlay" id="overlay">
+        <div class="sheet">
+          <div class="sheet-title">Focus Timer</div>
+          <div class="timer-display">${fmtTime(timerSeconds)}</div>
+          <div class="timer-mode">${timerMode === "focus" ? "Focused study" : "Break — 10 squats, then resume"}</div>
+          ${timerMode === "focus" ? `
+            <div class="action-btn" id="btn-timer-toggle">${timerRunning ? "Pause" : "Start"}</div>
+            <div class="action-btn" id="btn-timer-reset">Reset</div>
+          ` : `
+            <div class="action-btn" id="btn-timer-resume">Squats done — resume focus</div>
+          `}
+          <div style="font-size:12px;color:var(--text-muted);margin-top:12px;text-align:center;">${completedBlocks} focus block${completedBlocks === 1 ? "" : "s"} completed today</div>
+          <div class="sheet-close" id="sheet-close">Close</div>
+        </div>
+      </div>
+    `;
+  }
+
   app.innerHTML = html;
 
   app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
@@ -552,8 +698,15 @@ function render() {
   }));
   const th = document.getElementById("toggle-hardday");
   if (th) th.addEventListener("click", toggleHardDay);
+  document.getElementById("btn-focus").addEventListener("click", () => { sheetOpen = "focus"; render(); });
   document.getElementById("btn-history").addEventListener("click", () => { sheetOpen = "history"; render(); });
   document.getElementById("btn-backup").addEventListener("click", () => { sheetOpen = "backup"; render(); });
+  const tt = document.getElementById("btn-timer-toggle");
+  if (tt) tt.addEventListener("click", () => { timerRunning ? pauseTimer() : startTimer(); });
+  const tr = document.getElementById("btn-timer-reset");
+  if (tr) tr.addEventListener("click", resetTimer);
+  const tres = document.getElementById("btn-timer-resume");
+  if (tres) tres.addEventListener("click", resumeFocusAfterBreak);
   const prev = document.getElementById("nav-prev");
   const next = document.getElementById("nav-next");
   if (prev) prev.addEventListener("click", () => navDay(-1));
@@ -572,7 +725,7 @@ function render() {
   const br = document.getElementById("btn-reset");
   if (br) br.addEventListener("click", () => {
     if (confirm("This deletes all logged days and resets to Phase 1. This cannot be undone unless you have a backup. Continue?")) {
-      state = { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0 };
+      state = { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0, freezes: 0, freezeDays: {}, freezeAwardTier: 0 };
       saveState(state);
       sheetOpen = null;
       render();
