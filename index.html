@@ -15,12 +15,14 @@
     --bg: #F1EFE8; --card: #FFFFFF; --border: #D3D1C7;
     --text: #2C2C2A; --text-secondary: #5F5E5A; --text-muted: #888780;
     --green-bg: #EAF3DE; --green-text: #173404; --accent: #0F6E56;
+    --amber-bg: #FAEEDA; --amber-text: #633806;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #1a1a19; --card: #2C2C2A; --border: #444441;
       --text: #F1EFE8; --text-secondary: #B4B2A9; --text-muted: #888780;
       --green-bg: #173404; --green-text: #C0DD97; --accent: #5DCAA5;
+      --amber-bg: #412402; --amber-text: #FAC775;
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -30,9 +32,22 @@
     padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
     min-height: 100vh;
   }
-  .header { padding: 20px 4px 8px; }
+  .header { padding: 20px 4px 8px; display: flex; justify-content: space-between; align-items: flex-start; }
   .phase-name { font-size: 20px; font-weight: 600; }
   .phase-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .icon-btn {
+    background: var(--card); border: 0.5px solid var(--border); border-radius: 10px;
+    width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--text-secondary); cursor: pointer;
+  }
+  .header-btns { display: flex; gap: 8px; }
+  .day-nav { display: flex; align-items: center; justify-content: space-between; margin: 8px 4px 4px; }
+  .day-nav-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  .day-nav button {
+    background: none; border: none; font-size: 20px; color: var(--text-secondary);
+    padding: 4px 10px; cursor: pointer;
+  }
+  .day-nav button:disabled { opacity: 0.3; }
   .stats { display: flex; gap: 12px; margin: 16px 0; }
   .stat-card {
     flex: 1; background: var(--card); border: 0.5px solid var(--border);
@@ -64,6 +79,55 @@
     margin-top: 12px; padding: 12px 14px; border-radius: 10px;
     background: var(--green-bg); color: var(--green-text);
     font-size: 13px; text-align: center; font-weight: 500;
+  }
+  .hard-day-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 0.5px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin: 12px 0;
+  }
+  .hard-day-row.active { background: var(--amber-bg); }
+  .hard-day-label { font-size: 13px; }
+  .hard-day-row.active .hard-day-label { color: var(--amber-text); font-weight: 500; }
+  .toggle {
+    width: 44px; height: 26px; border-radius: 13px; background: var(--border);
+    position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle-knob {
+    width: 22px; height: 22px; border-radius: 50%; background: white;
+    position: absolute; top: 2px; left: 2px; transition: left 0.15s;
+  }
+  .toggle.on .toggle-knob { left: 20px; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
+    padding: 20px 16px calc(env(safe-area-inset-bottom) + 20px); max-height: 85vh; overflow-y: auto;
+  }
+  .sheet-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sheet-close {
+    text-align: center; padding: 12px; color: var(--text-secondary); font-size: 14px; cursor: pointer;
+  }
+  .history-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 4px; border-bottom: 0.5px solid var(--border); font-size: 14px;
+  }
+  .history-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .history-dot.clean { background: var(--accent); }
+  .history-dot.partial { background: #EF9F27; }
+  .history-dot.none { background: var(--border); }
+  .action-btn {
+    display: block; width: 100%; text-align: center; padding: 12px;
+    background: var(--card); border: 0.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; margin-top: 10px; cursor: pointer; color: var(--text);
+  }
+  .action-btn.danger { color: #E24B4A; }
+  textarea.import-box {
+    width: 100%; min-height: 80px; margin-top: 8px; border-radius: 8px;
+    border: 0.5px solid var(--border); background: var(--card); color: var(--text);
+    font-size: 12px; padding: 8px; font-family: monospace;
   }
 </style>
 </head>
@@ -109,95 +173,265 @@ const PHASES = [
     { id: "reading", label: "Reading / random topic" },
   ]},
 ];
+// Hard-day mode: a reduced item list per phase for legitimately rough days.
+// Uses first N ids of each phase as the "anchor" set. Adjust if you want specific ids instead.
+const HARD_DAY_ANCHOR_COUNT = 3;
 const CLEAN_DAYS_TO_ADVANCE = 5;
-const STORAGE_KEY = "perfect-day-state-v1";
+const STORAGE_KEY = "perfect-day-state-v2";
 // --------------------------------------------------------------------------------
 
-function todayKey() {
-  const d = new Date();
+function fmtKey(d) {
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
+function todayKey() { return fmtKey(new Date()); }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return { phase: 0, logs: {}, justAdvanced: false };
+  return { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0 };
 }
-
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
+function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
 
 let state = loadState();
+let viewOffset = 0; // 0 = today, -1 = yesterday, etc. Only 0 and -1 editable.
+let sheetOpen = null; // null | "history" | "backup"
 
-function streak() {
+function viewDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + viewOffset);
+  return d;
+}
+function viewKey() { return fmtKey(viewDate()); }
+
+function activeItems(phaseIdx, hardDay) {
+  const items = PHASES[phaseIdx].items;
+  return hardDay ? items.slice(0, HARD_DAY_ANCHOR_COUNT) : items;
+}
+
+function dayIsClean(key, phaseIdx) {
+  const log = state.logs[key];
+  if (!log) return false;
+  const items = activeItems(phaseIdx, log.hardDay);
+  return items.length > 0 && items.every(i => log[i.id]);
+}
+
+function streakAndBest() {
   const items = PHASES[state.phase].items.map(i => i.id);
   let count = 0;
   let d = new Date();
   while (true) {
-    const key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-    const log = state.logs[key];
-    if (log && items.every(id => log[id])) {
-      count++;
-      d.setDate(d.getDate() - 1);
-    } else break;
+    const key = fmtKey(d);
+    if (dayIsClean(key, state.phase)) { count++; d.setDate(d.getDate() - 1); }
+    else break;
   }
+  if (count > (state.bestStreak || 0)) state.bestStreak = count;
   return count;
 }
 
 function toggle(id) {
-  const key = todayKey();
+  const key = viewKey();
   if (!state.logs[key]) state.logs[key] = {};
   state.logs[key][id] = !state.logs[key][id];
-  const s = streak();
   state.justAdvanced = false;
-  if (s >= CLEAN_DAYS_TO_ADVANCE && state.phase < PHASES.length - 1) {
-    state.phase += 1;
-    state.justAdvanced = true;
+  if (viewOffset === 0) {
+    const s = streakAndBest();
+    if (s >= CLEAN_DAYS_TO_ADVANCE && state.phase < PHASES.length - 1) {
+      state.phase += 1;
+      state.justAdvanced = true;
+    }
+  } else {
+    streakAndBest();
   }
   saveState(state);
   render();
 }
 
+function toggleHardDay() {
+  const key = viewKey();
+  if (!state.logs[key]) state.logs[key] = {};
+  state.logs[key].hardDay = !state.logs[key].hardDay;
+  saveState(state);
+  render();
+}
+
+function navDay(delta) {
+  const next = viewOffset + delta;
+  if (next > 0 || next < -1) return; // only today and yesterday editable/viewable this way
+  viewOffset = next;
+  render();
+}
+
+function exportData() {
+  const blob = JSON.stringify(state);
+  const ta = document.createElement("textarea");
+  ta.value = blob;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch(e) {}
+  document.body.removeChild(ta);
+  alert("Backup copied to clipboard. Paste it somewhere safe (Notes app works).");
+}
+
+function importData(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.phase !== "number" || typeof parsed.logs !== "object") throw new Error("bad shape");
+    state = parsed;
+    saveState(state);
+    sheetOpen = null;
+    render();
+    alert("Restored.");
+  } catch (e) {
+    alert("That didn't look like a valid backup. Nothing changed.");
+  }
+}
+
+function dayLabel() {
+  if (viewOffset === 0) return "Today";
+  if (viewOffset === -1) return "Yesterday";
+  return viewKey();
+}
+
 function render() {
   const app = document.getElementById("app");
   const phase = PHASES[state.phase];
-  const key = todayKey();
+  const key = viewKey();
   const log = state.logs[key] || {};
-  const s = streak();
-  const doneCount = phase.items.filter(i => log[i.id]).length;
+  const hardDay = !!log.hardDay;
+  const items = activeItems(state.phase, hardDay);
+  const s = streakAndBest();
+  const doneCount = items.filter(i => log[i.id]).length;
 
-  app.innerHTML = `
+  let html = `
     <div class="header">
-      <div class="phase-name">${phase.name}</div>
-      <div class="phase-sub">${phase.items.length} anchors today</div>
+      <div>
+        <div class="phase-name">${phase.name}</div>
+        <div class="phase-sub">${items.length} anchors${hardDay ? " (hard-day mode)" : ""}</div>
+      </div>
+      <div class="header-btns">
+        <div class="icon-btn" id="btn-history">&#128202;</div>
+        <div class="icon-btn" id="btn-backup">&#8635;</div>
+      </div>
     </div>
+
+    <div class="day-nav">
+      <button id="nav-prev" ${viewOffset <= -1 ? "disabled" : ""}>&#8249;</button>
+      <div class="day-nav-label">${dayLabel()}</div>
+      <button id="nav-next" ${viewOffset >= 0 ? "disabled" : ""}>&#8250;</button>
+    </div>
+
     <div class="stats">
       <div class="stat-card">
-        <div class="stat-num">${doneCount}/${phase.items.length}</div>
-        <div class="stat-label">today</div>
+        <div class="stat-num">${doneCount}/${items.length}</div>
+        <div class="stat-label">${dayLabel().toLowerCase()}</div>
       </div>
       <div class="stat-card">
         <div class="stat-num">${s}</div>
         <div class="stat-label">day streak</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-num">${state.bestStreak || 0}</div>
+        <div class="stat-label">best streak</div>
+      </div>
     </div>
-    ${state.justAdvanced ? `<div class="phase-banner">5 clean days — moved up to ${phase.name}</div>` : ""}
+
+    ${state.justAdvanced && viewOffset === 0 ? `<div class="phase-banner">${CLEAN_DAYS_TO_ADVANCE} clean days — moved up to ${phase.name}</div>` : ""}
+
+    <div class="hard-day-row ${hardDay ? "active" : ""}">
+      <div class="hard-day-label">Hard-day mode — reduced anchors, no lying on the boxes</div>
+      <div class="toggle ${hardDay ? "on" : ""}" id="toggle-hardday"><div class="toggle-knob"></div></div>
+    </div>
+
     <div class="items">
-      ${phase.items.map(i => `
+      ${items.map(i => `
         <div class="item ${log[i.id] ? "done" : ""}" data-id="${i.id}">
-          <div class="checkbox">${log[i.id] ? "✓" : ""}</div>
+          <div class="checkbox">${log[i.id] ? "&#10003;" : ""}</div>
           <div class="item-label">${i.label}</div>
         </div>
       `).join("")}
     </div>
-    <div class="footer-note">${CLEAN_DAYS_TO_ADVANCE} clean days in a row auto-advances the phase. Partial days don't count.</div>
+    <div class="footer-note">${CLEAN_DAYS_TO_ADVANCE} clean days in a row auto-advances the phase. Partial days don't count. Only today and yesterday are editable.</div>
   `;
 
-  app.querySelectorAll(".item").forEach(el => {
-    el.addEventListener("click", () => toggle(el.dataset.id));
+  if (sheetOpen === "history") {
+    const rows = [];
+    let d = new Date();
+    for (let i = 0; i < 30; i++) {
+      const k = fmtKey(d);
+      const l = state.logs[k];
+      let cls = "none", label = "no data";
+      if (l) {
+        const its = activeItems(state.phase, l.hardDay);
+        const done = its.filter(x => l[x.id]).length;
+        if (done === its.length && its.length > 0) { cls = "clean"; label = l.hardDay ? "clean (hard day)" : "clean"; }
+        else if (done > 0) { cls = "partial"; label = `${done}/${its.length}`; }
+        else { label = "0 done"; }
+      }
+      rows.push(`<div class="history-row"><span>${k}</span><span style="display:flex;align-items:center;gap:8px;"><span style="color:var(--text-muted);font-size:12px;">${label}</span><span class="history-dot ${cls}"></span></span></div>`);
+      d.setDate(d.getDate() - 1);
+    }
+    html += `
+      <div class="overlay" id="overlay">
+        <div class="sheet">
+          <div class="sheet-title">Last 30 days</div>
+          <div style="margin-top:8px;">${rows.join("")}</div>
+          <div class="sheet-close" id="sheet-close">Close</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (sheetOpen === "backup") {
+    html += `
+      <div class="overlay" id="overlay">
+        <div class="sheet">
+          <div class="sheet-title">Backup and restore</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">
+            Your data lives only on this phone. Export a copy somewhere safe (Notes, email to yourself) in case you switch phones or clear Safari's storage.
+          </div>
+          <div class="action-btn" id="btn-export">Copy backup to clipboard</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-top:16px;">Paste a backup below to restore:</div>
+          <textarea class="import-box" id="import-box" placeholder="Paste backup JSON here"></textarea>
+          <div class="action-btn" id="btn-import">Restore from pasted backup</div>
+          <div class="action-btn danger" id="btn-reset">Reset all data (careful)</div>
+          <div class="sheet-close" id="sheet-close">Close</div>
+        </div>
+      </div>
+    `;
+  }
+
+  app.innerHTML = html;
+
+  app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
+  const th = document.getElementById("toggle-hardday");
+  if (th) th.addEventListener("click", toggleHardDay);
+  document.getElementById("btn-history").addEventListener("click", () => { sheetOpen = "history"; render(); });
+  document.getElementById("btn-backup").addEventListener("click", () => { sheetOpen = "backup"; render(); });
+  const prev = document.getElementById("nav-prev");
+  const next = document.getElementById("nav-next");
+  if (prev) prev.addEventListener("click", () => navDay(-1));
+  if (next) next.addEventListener("click", () => navDay(1));
+  const overlay = document.getElementById("overlay");
+  if (overlay) overlay.addEventListener("click", (e) => { if (e.target.id === "overlay") { sheetOpen = null; render(); } });
+  const sc = document.getElementById("sheet-close");
+  if (sc) sc.addEventListener("click", () => { sheetOpen = null; render(); });
+  const be = document.getElementById("btn-export");
+  if (be) be.addEventListener("click", exportData);
+  const bi = document.getElementById("btn-import");
+  if (bi) bi.addEventListener("click", () => {
+    const val = document.getElementById("import-box").value.trim();
+    if (val) importData(val);
+  });
+  const br = document.getElementById("btn-reset");
+  if (br) br.addEventListener("click", () => {
+    if (confirm("This deletes all logged days and resets to Phase 1. This cannot be undone unless you have a backup. Continue?")) {
+      state = { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0 };
+      saveState(state);
+      sheetOpen = null;
+      render();
+    }
   });
 }
 
