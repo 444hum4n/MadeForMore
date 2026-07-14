@@ -120,10 +120,27 @@
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 4px; border-bottom: 0.5px solid var(--border); font-size: 14px;
   }
-  .history-dot { width: 10px; height: 10px; border-radius: 50%; }
+ .history-dot { width: 10px; height: 10px; border-radius: 50%; }
   .history-dot.clean { background: var(--accent); }
   .history-dot.partial { background: #EF9F27; }
   .history-dot.none { background: var(--border); }
+  .trend-chart {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 90px; margin-top: 16px; padding: 0 2px;
+  }
+  .trend-bar { flex: 1; border-radius: 2px 2px 0 0; min-width: 2px; }
+  .trend-bar.clean { background: var(--accent); }
+  .trend-bar.partial { background: #EF9F27; }
+  .trend-bar.none { background: var(--border); }
+  .trend-legend {
+    display: flex; gap: 16px; margin-top: 8px;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .trend-legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .legend-dot.clean { background: var(--accent); }
+  .legend-dot.partial { background: #EF9F27; }
+  .legend-dot.none { background: var(--border); }
   .action-btn {
     display: block; width: 100%; text-align: center; padding: 12px;
     background: var(--card); border: 0.5px solid var(--border); border-radius: 10px;
@@ -376,28 +393,42 @@ function render() {
     <div class="footer-note">${CLEAN_DAYS_TO_ADVANCE} clean days in a row auto-advances the phase. Partial days don't count. Only today and yesterday are editable.</div>
   `;
 
-  if (sheetOpen === "history") {
+if (sheetOpen === "history") {
     const rows = [];
+    const dayData = [];
     let d = new Date();
     for (let i = 0; i < 30; i++) {
       const k = fmtKey(d);
       const l = state.logs[k];
-      let cls = "none", label = "no data";
+      let cls = "none", label = "no data", ratio = 0;
       if (l) {
         const its = activeItems(state.phase, l.hardDay);
         const done = its.filter(x => l[x.id]).length;
+        ratio = its.length > 0 ? done / its.length : 0;
         if (done === its.length && its.length > 0) { cls = "clean"; label = l.hardDay ? "clean (hard day)" : "clean"; }
         else if (done > 0) { cls = "partial"; label = `${done}/${its.length}`; }
         else { label = "0 done"; }
       }
+      dayData.push({ k, cls, label, ratio });
       rows.push(`<div class="history-row"><span>${k}</span><span style="display:flex;align-items:center;gap:8px;"><span style="color:var(--text-muted);font-size:12px;">${label}</span><span class="history-dot ${cls}"></span></span></div>`);
       d.setDate(d.getDate() - 1);
     }
+    // chart reads oldest -> newest, left to right, so it shows growth over time
+    const chartDays = [...dayData].reverse();
+    const bars = chartDays.map(day => `
+      <div class="trend-bar ${day.cls}" style="height:${Math.max(6, Math.round(day.ratio * 100))}%" title="${day.k}: ${day.label}"></div>
+    `).join("");
     html += `
       <div class="overlay" id="overlay">
         <div class="sheet">
           <div class="sheet-title">Last 30 days</div>
-          <div style="margin-top:8px;">${rows.join("")}</div>
+          <div class="trend-chart">${bars}</div>
+          <div class="trend-legend">
+            <span><span class="legend-dot clean"></span>clean</span>
+            <span><span class="legend-dot partial"></span>partial</span>
+            <span><span class="legend-dot none"></span>no data</span>
+          </div>
+          <div style="margin-top:16px;">${rows.join("")}</div>
           <div class="sheet-close" id="sheet-close">Close</div>
         </div>
       </div>
