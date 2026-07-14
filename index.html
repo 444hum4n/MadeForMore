@@ -81,6 +81,10 @@
     margin-top: 20px; font-size: 12px; color: var(--text-muted);
     text-align: center; padding: 0 20px;
   }
+  .freeze-row {
+    margin-top: 10px; font-size: 12px; color: var(--text-muted);
+    text-align: center; padding: 0 10px;
+  }
   .phase-banner {
     margin-top: 12px; padding: 12px 14px; border-radius: 10px;
     background: var(--green-bg); color: var(--green-text);
@@ -120,10 +124,11 @@
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 4px; border-bottom: 0.5px solid var(--border); font-size: 14px;
   }
- .history-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .history-dot { width: 10px; height: 10px; border-radius: 50%; }
   .history-dot.clean { background: var(--accent); }
   .history-dot.partial { background: #EF9F27; }
   .history-dot.none { background: var(--border); }
+  .history-dot.frozen { background: #4FA8E8; }
   .trend-chart {
     display: flex; align-items: flex-end; gap: 3px;
     height: 90px; margin-top: 16px; padding: 0 2px;
@@ -132,6 +137,7 @@
   .trend-bar.clean { background: var(--accent); }
   .trend-bar.partial { background: #EF9F27; }
   .trend-bar.none { background: var(--border); }
+  .trend-bar.frozen { background: #4FA8E8; }
   .trend-legend {
     display: flex; gap: 16px; margin-top: 8px;
     font-size: 12px; color: var(--text-muted);
@@ -141,6 +147,7 @@
   .legend-dot.clean { background: var(--accent); }
   .legend-dot.partial { background: #EF9F27; }
   .legend-dot.none { background: var(--border); }
+  .legend-dot.frozen { background: #4FA8E8; }
   .action-btn {
     display: block; width: 100%; text-align: center; padding: 12px;
     background: var(--card); border: 0.5px solid var(--border); border-radius: 10px;
@@ -212,7 +219,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0 };
+  return { phase: 0, logs: {}, justAdvanced: false, bestStreak: 0, freezes: 0, freezeDays: {}, freezeAwardTier: 0 };
 }
 function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
 
@@ -229,7 +236,7 @@ function viewKey() { return fmtKey(viewDate()); }
 
 function activeItems(phaseIdx, hardDay) {
   const items = PHASES[phaseIdx].items;
-return hardDay ? items.filter(i => i.essential) : items;
+  return hardDay ? items.filter(i => i.essential) : items;
 }
 
 function dayIsClean(key, phaseIdx) {
@@ -240,16 +247,47 @@ function dayIsClean(key, phaseIdx) {
 }
 
 function streakAndBest() {
-  const items = PHASES[state.phase].items.map(i => i.id);
   let count = 0;
   let d = new Date();
+  state.freezeDays = state.freezeDays || {};
+  let freezesRemaining = state.freezes || 0;
+  let freezesChanged = false;
   while (true) {
     const key = fmtKey(d);
-    if (dayIsClean(key, state.phase)) { count++; d.setDate(d.getDate() - 1); }
-    else break;
+    if (dayIsClean(key, state.phase)) {
+      count++;
+    } else if (state.freezeDays[key]) {
+      // a day already protected by a freeze in an earlier calculation
+      count++;
+    } else if (!state.logs[key] && freezesRemaining > 0 && key !== todayKey()) {
+      // a fully missed past day (no log at all), covered by an earned freeze —
+      // today is never freeze-eligible while the day is still in progress
+      state.freezeDays[key] = true;
+      freezesRemaining--;
+      freezesChanged = true;
+      count++;
+    } else {
+      break;
+    }
+    d.setDate(d.getDate() - 1);
   }
+  if (freezesChanged) state.freezes = freezesRemaining;
   if (count > (state.bestStreak || 0)) state.bestStreak = count;
   return count;
+}
+
+function maybeAwardFreeze(streak) {
+  const MILESTONE = 7;   // days of clean streak per freeze earned
+  const MAX_FREEZES = 2; // "just enough, not too many"
+  const tierReached = Math.floor(streak / MILESTONE);
+  const tierAlreadyAwarded = state.freezeAwardTier || 0;
+  state.justEarnedFreeze = false;
+  if (tierReached > tierAlreadyAwarded) {
+    const gained = tierReached - tierAlreadyAwarded;
+    state.freezes = Math.min(MAX_FREEZES, (state.freezes || 0) + gained);
+    state.freezeAwardTier = tierReached;
+    state.justEarnedFreeze = true;
+  }
 }
 
 function toggle(id) {
@@ -263,12 +301,14 @@ function toggle(id) {
       state.phase += 1;
       state.justAdvanced = true;
     }
+    maybeAwardFreeze(s);
   } else {
     streakAndBest();
   }
   saveState(state);
   render();
 }
+
 function setNote(id) {
   const key = viewKey();
   if (!state.logs[key] || !state.logs[key][id]) return; // only note completed items
@@ -283,6 +323,7 @@ function setNote(id) {
   saveState(state);
   render();
 }
+
 function toggleHardDay() {
   const key = viewKey();
   if (!state.logs[key]) state.logs[key] = {};
@@ -372,6 +413,9 @@ function render() {
       </div>
     </div>
 
+    <div class="freeze-row">&#10052;&#65039; ${state.freezes || 0} freeze${(state.freezes || 0) === 1 ? "" : "s"} banked — earned every 7-day clean streak, covers a fully missed day, max 2</div>
+
+    ${state.justEarnedFreeze && viewOffset === 0 ? `<div class="phase-banner">&#10052;&#65039; Freeze earned — your streak is now protected for one fully missed day</div>` : ""}
     ${state.justAdvanced && viewOffset === 0 ? `<div class="phase-banner">${CLEAN_DAYS_TO_ADVANCE} clean days — moved up to ${phase.name}</div>` : ""}
 
     <div class="hard-day-row ${hardDay ? "active" : ""}">
@@ -393,7 +437,7 @@ function render() {
     <div class="footer-note">${CLEAN_DAYS_TO_ADVANCE} clean days in a row auto-advances the phase. Partial days don't count. Only today and yesterday are editable.</div>
   `;
 
-if (sheetOpen === "history") {
+  if (sheetOpen === "history") {
     const rows = [];
     const dayData = [];
     let d = new Date();
@@ -408,6 +452,8 @@ if (sheetOpen === "history") {
         if (done === its.length && its.length > 0) { cls = "clean"; label = l.hardDay ? "clean (hard day)" : "clean"; }
         else if (done > 0) { cls = "partial"; label = `${done}/${its.length}`; }
         else { label = "0 done"; }
+      } else if (state.freezeDays && state.freezeDays[k]) {
+        cls = "frozen"; label = "protected by freeze"; ratio = 0.5;
       }
       dayData.push({ k, cls, label, ratio });
       rows.push(`<div class="history-row"><span>${k}</span><span style="display:flex;align-items:center;gap:8px;"><span style="color:var(--text-muted);font-size:12px;">${label}</span><span class="history-dot ${cls}"></span></span></div>`);
@@ -426,6 +472,7 @@ if (sheetOpen === "history") {
           <div class="trend-legend">
             <span><span class="legend-dot clean"></span>clean</span>
             <span><span class="legend-dot partial"></span>partial</span>
+            <span><span class="legend-dot frozen"></span>frozen</span>
             <span><span class="legend-dot none"></span>no data</span>
           </div>
           <div style="margin-top:16px;">${rows.join("")}</div>
@@ -456,11 +503,12 @@ if (sheetOpen === "history") {
 
   app.innerHTML = html;
 
-app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
+  app.querySelectorAll(".item").forEach(el => el.addEventListener("click", () => toggle(el.dataset.id)));
   app.querySelectorAll(".item-note").forEach(el => el.addEventListener("click", (e) => {
     e.stopPropagation(); // so tapping the note doesn't also un-check the item above it
     setNote(el.dataset.noteId);
-  }));  const th = document.getElementById("toggle-hardday");
+  }));
+  const th = document.getElementById("toggle-hardday");
   if (th) th.addEventListener("click", toggleHardDay);
   document.getElementById("btn-history").addEventListener("click", () => { sheetOpen = "history"; render(); });
   document.getElementById("btn-backup").addEventListener("click", () => { sheetOpen = "backup"; render(); });
