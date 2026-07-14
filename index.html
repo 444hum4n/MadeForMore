@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Perfect Day</title>
+<meta name="theme-color" content="#1D9E75" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Perfect Day" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="manifest" href="manifest.json" />
+<style>
+  :root {
+    --bg: #F1EFE8; --card: #FFFFFF; --border: #D3D1C7;
+    --text: #2C2C2A; --text-secondary: #5F5E5A; --text-muted: #888780;
+    --green-bg: #EAF3DE; --green-text: #173404; --accent: #0F6E56;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a19; --card: #2C2C2A; --border: #444441;
+      --text: #F1EFE8; --text-secondary: #B4B2A9; --text-muted: #888780;
+      --green-bg: #173404; --green-text: #C0DD97; --accent: #5DCAA5;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 24px);
+    min-height: 100vh;
+  }
+  .header { padding: 20px 4px 8px; }
+  .phase-name { font-size: 20px; font-weight: 600; }
+  .phase-sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .stats { display: flex; gap: 12px; margin: 16px 0; }
+  .stat-card {
+    flex: 1; background: var(--card); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 14px; text-align: center;
+  }
+  .stat-num { font-size: 26px; font-weight: 600; }
+  .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .items { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 14px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .item.done { background: var(--green-bg); }
+  .item.done .item-label { color: var(--green-text); }
+  .checkbox {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white;
+  }
+  .item.done .checkbox { background: var(--accent); border-color: var(--accent); }
+  .item-label { font-size: 15px; }
+  .footer-note {
+    margin-top: 20px; font-size: 12px; color: var(--text-muted);
+    text-align: center; padding: 0 20px;
+  }
+  .phase-banner {
+    margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+    background: var(--green-bg); color: var(--green-text);
+    font-size: 13px; text-align: center; font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ---- Config: this array is the only thing you'd change to re-calibrate the plan ----
+const PHASES = [
+  { name: "Phase 1", items: [
+    { id: "wake", label: "5:45am wake, feet on floor" },
+    { id: "water", label: "Water, cold face, prayer" },
+    { id: "gym", label: "6am gym or stretch (light effort)" },
+    { id: "study", label: "9am desk, 90 min minimum" },
+    { id: "meals", label: "3 meals: 8am / 1pm / 5pm" },
+  ]},
+  { name: "Phase 2", items: [
+    { id: "wake", label: "5:45am wake, feet on floor" },
+    { id: "water", label: "Water, cold face, prayer" },
+    { id: "gym", label: "Gym, full intensity" },
+    { id: "study", label: "Study block (building to 6hrs)" },
+    { id: "meals", label: "3 meals: 8am / 1pm / 5pm" },
+    { id: "journal", label: "Journal (after prayer)" },
+  ]},
+  { name: "Phase 3", items: [
+    { id: "wake", label: "5:45am wake, feet on floor" },
+    { id: "water", label: "Water, cold face, prayer" },
+    { id: "gym", label: "Gym, full intensity" },
+    { id: "study", label: "Study block, 6hrs" },
+    { id: "meals", label: "Meals: 3000kcal / 170g protein" },
+    { id: "journal", label: "Journal" },
+    { id: "tennis", label: "Tennis (after study ends)" },
+  ]},
+  { name: "Phase 4", items: [
+    { id: "wake", label: "5:45am wake, feet on floor" },
+    { id: "water", label: "Water, cold face, prayer" },
+    { id: "gym", label: "Gym, full intensity" },
+    { id: "study", label: "Study block, 6hrs" },
+    { id: "meals", label: "Meals: 3000kcal / 170g protein" },
+    { id: "journal", label: "Journal" },
+    { id: "tennis", label: "Tennis" },
+    { id: "language", label: "Language block, 4-5pm" },
+    { id: "reading", label: "Reading / random topic" },
+  ]},
+];
+const CLEAN_DAYS_TO_ADVANCE = 5;
+const STORAGE_KEY = "perfect-day-state-v1";
+// --------------------------------------------------------------------------------
+
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { phase: 0, logs: {}, justAdvanced: false };
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+function streak() {
+  const items = PHASES[state.phase].items.map(i => i.id);
+  let count = 0;
+  let d = new Date();
+  while (true) {
+    const key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    const log = state.logs[key];
+    if (log && items.every(id => log[id])) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+  }
+  return count;
+}
+
+function toggle(id) {
+  const key = todayKey();
+  if (!state.logs[key]) state.logs[key] = {};
+  state.logs[key][id] = !state.logs[key][id];
+  const s = streak();
+  state.justAdvanced = false;
+  if (s >= CLEAN_DAYS_TO_ADVANCE && state.phase < PHASES.length - 1) {
+    state.phase += 1;
+    state.justAdvanced = true;
+  }
+  saveState(state);
+  render();
+}
+
+function render() {
+  const app = document.getElementById("app");
+  const phase = PHASES[state.phase];
+  const key = todayKey();
+  const log = state.logs[key] || {};
+  const s = streak();
+  const doneCount = phase.items.filter(i => log[i.id]).length;
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="phase-name">${phase.name}</div>
+      <div class="phase-sub">${phase.items.length} anchors today</div>
+    </div>
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-num">${doneCount}/${phase.items.length}</div>
+        <div class="stat-label">today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${s}</div>
+        <div class="stat-label">day streak</div>
+      </div>
+    </div>
+    ${state.justAdvanced ? `<div class="phase-banner">5 clean days — moved up to ${phase.name}</div>` : ""}
+    <div class="items">
+      ${phase.items.map(i => `
+        <div class="item ${log[i.id] ? "done" : ""}" data-id="${i.id}">
+          <div class="checkbox">${log[i.id] ? "✓" : ""}</div>
+          <div class="item-label">${i.label}</div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="footer-note">${CLEAN_DAYS_TO_ADVANCE} clean days in a row auto-advances the phase. Partial days don't count.</div>
+  `;
+
+  app.querySelectorAll(".item").forEach(el => {
+    el.addEventListener("click", () => toggle(el.dataset.id));
+  });
+}
+
+render();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

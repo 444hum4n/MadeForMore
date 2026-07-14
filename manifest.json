@@ -1,0 +1,14 @@
+{
+  "name": "Perfect Day",
+  "short_name": "Perfect Day",
+  "description": "Sequential habit tracker — phases unlock after 5 clean days.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1D9E75",
+  "theme_color": "#1D9E75",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
